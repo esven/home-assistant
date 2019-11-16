@@ -1,0 +1,12 @@
+{
+  "domain": "vaillant",
+  "name": "Vaillant",
+  "documentation": "https://www.home-assistant.io/components/vaillant",
+  "requirements": [
+    "pymultimatic==0.0.11"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@thomasgermain"
+  ]
+}

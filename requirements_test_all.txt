@@ -489,6 +489,9 @@ pymodbus==1.5.2
 # homeassistant.components.monoprice
 pymonoprice==0.3
 
+# homeassistant.components.vaillant
+pymultimatic==0.0.11
+
 # homeassistant.components.nws
 pynws==0.10.1
 

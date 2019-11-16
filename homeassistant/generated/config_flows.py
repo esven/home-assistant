@@ -94,6 +94,7 @@ FLOWS = [
     "twilio",
     "unifi",
     "upnp",
+    #    "vaillant",
     "velbus",
     "vesync",
     "vizio",
