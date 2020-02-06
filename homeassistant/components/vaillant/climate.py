@@ -2,37 +2,34 @@
 
 import abc
 import logging
-from datetime import timedelta, datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from pymultimatic.model import (
-    System,
-    Room,
+    ActiveMode,
     Component,
-    Zone,
+    Mode,
     OperatingModes,
     QuickModes,
-    Mode,
+    Room,
+    System,
+    Zone,
 )
 
 from homeassistant.components.climate import ClimateDevice
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE,
     DOMAIN,
-    HVAC_MODE_OFF,
-    HVAC_MODE_HEAT,
     HVAC_MODE_AUTO,
-    HVAC_MODE_FAN_ONLY,
     HVAC_MODE_COOL,
+    HVAC_MODE_FAN_ONLY,
+    HVAC_MODE_HEAT,
+    HVAC_MODE_OFF,
+    SUPPORT_TARGET_TEMPERATURE,
 )
-from homeassistant.const import TEMP_CELSIUS, ATTR_TEMPERATURE
-from homeassistant.util import dt as dt_util
+from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+
 from . import VaillantEntity
-from .const import (HUB, DOMAIN as VAILLANT,
-                    ATTR_VAILLANT_MODE, ATTR_QUICK_VETO_END,
-                    ATTR_VAILLANT_SETTING, ATTR_VAILLANT_NEXT_SETTING,
-                    ATTR_VAILLANT_SETTING_END, ATTR_VAILLANT_SETTING_END_TS,
-                    ATTR_QUICK_VETO_END_TS)
+from .const import DOMAIN as VAILLANT, HUB
+from .utils import gen_state_attrs
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,8 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # return True
 
 
-async def async_setup_platform(hass, config, async_add_entities,
-                               discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Vaillant climate platform."""
     climates = []
     hub = hass.data[VAILLANT][HUB]
@@ -93,8 +89,13 @@ class VaillantClimate(VaillantEntity, ClimateDevice, abc.ABC):
         super().__init__(DOMAIN, None, comp_name, comp_id)
         self._system = None
         self.component = None
-        self._active_mode = None
         self._refresh(system, component)
+
+    @property
+    @abc.abstractmethod
+    def active_mode(self) -> ActiveMode:
+        """Get active mode of the climate."""
+        pass
 
     @property
     def listening(self):
@@ -114,8 +115,8 @@ class VaillantClimate(VaillantEntity, ClimateDevice, abc.ABC):
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        _LOGGER.debug("Target temp is %s", self._active_mode.target_temperature)
-        return self._active_mode.target_temperature
+        _LOGGER.debug("Target temp is %s", self.active_mode.target_temperature)
+        return self.active_mode.target_temperature
 
     @property
     def current_temperature(self):
@@ -131,54 +132,7 @@ class VaillantClimate(VaillantEntity, ClimateDevice, abc.ABC):
     def state_attributes(self) -> Dict[str, Any]:
         """Return the optional state attributes."""
         attributes = super().state_attributes
-        self._active_mode = self.get_active_mode()
-        attributes.update({
-            ATTR_VAILLANT_MODE: self._active_mode.current_mode.name
-        })
-
-        if self._active_mode.current_mode == OperatingModes.QUICK_VETO:
-            if self.component.quick_veto.remaining_duration:
-                qveto_millis = self.component.quick_veto.remaining_duration \
-                    * 60 * 1000
-                end_time = dt_util.as_local(datetime.now()) +\
-                    timedelta(milliseconds=qveto_millis)
-                attributes.update({
-                    ATTR_QUICK_VETO_END: end_time.isoformat(),
-                    ATTR_QUICK_VETO_END_TS: end_time.timestamp()
-                })
-        elif self._active_mode.current_mode == OperatingModes.AUTO:
-            now = dt_util.as_local(datetime.now())
-            abs_min = now.hour * 60 + now.minute
-            next_setting = self.component.time_program.get_next(now)
-
-            next_start = now
-            # it means, next setting is tomorrow
-            if next_setting.absolute_minutes < abs_min:
-                next_start = next_start + timedelta(days=1)
-            next_start = next_start.replace(
-                hour=next_setting.hour,
-                minute=next_setting.minute,
-                second=0,
-                microsecond=0,
-            )
-            # next_start_date = dt_util.as_utc(next_start)
-            next_start_ts = dt_util.as_timestamp(next_start)
-
-            attributes.update(
-                {
-                    ATTR_VAILLANT_NEXT_SETTING: next_setting.setting.name
-                    if next_setting.setting
-                    else next_setting.target_temperature,
-                    ATTR_VAILLANT_SETTING_END: next_start.isoformat(),
-                    ATTR_VAILLANT_SETTING_END_TS: next_start_ts,
-                }
-            )
-
-            if self._active_mode.sub_mode is not None:
-                attributes.update(
-                    {ATTR_VAILLANT_SETTING: self._active_mode.sub_mode.name}
-                )
-
+        attributes.update(gen_state_attrs(self.component, self.active_mode))
         return attributes
 
     @property
@@ -235,18 +189,21 @@ class VaillantClimate(VaillantEntity, ClimateDevice, abc.ABC):
     def hvac_mode(self) -> str:
         """Return hvac operation ie. heat, cool mode."""
 
-        hvac_mode = self.mode_to_hvac(self._active_mode.current_mode)
+        hvac_mode = self.mode_to_hvac(self.active_mode.current_mode)
 
         if hvac_mode is None:
-            if self._active_mode.current_mode in [OperatingModes.QUICK_VETO,
-                                                  OperatingModes.MANUAL]:
+            if self.active_mode.current_mode in [
+                OperatingModes.QUICK_VETO,
+                OperatingModes.MANUAL,
+            ]:
                 if self._is_heating():
                     hvac_mode = HVAC_MODE_HEAT
                 else:
                     hvac_mode = HVAC_MODE_COOL
             else:
-                _LOGGER.warning("Unknown mode %s, will return None",
-                                self._active_mode.current_mode)
+                _LOGGER.warning(
+                    "Unknown mode %s, will return None", self.active_mode.current_mode
+                )
         return hvac_mode
 
     async def vaillant_update(self):
@@ -257,16 +214,9 @@ class VaillantClimate(VaillantEntity, ClimateDevice, abc.ABC):
         """Refresh the entity."""
         self._system = system
         self.component = component
-        self._active_mode = self.get_active_mode()
 
     def _is_heating(self):
-        return self._active_mode.target_temperature > \
-            self.component.current_temperature
-
-    @abc.abstractmethod
-    def get_active_mode(self):
-        """Get active mode of the climate."""
-        pass
+        return self.active_mode.target_temperature > self.component.current_temperature
 
     @abc.abstractmethod
     def mode_to_hvac(self, mode):
@@ -329,7 +279,8 @@ class RoomClimate(VaillantClimate):
         """Return the maximum temperature."""
         return Room.MAX_TARGET_TEMP
 
-    def get_active_mode(self):
+    @property
+    def active_mode(self) -> ActiveMode:
         """Get active mode of the climate."""
         return self._system.get_active_mode_room(self.component)
 
@@ -417,9 +368,10 @@ class ZoneClimate(VaillantClimate):
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        return self._active_mode.target_temperature
+        return self.active_mode.target_temperature
 
-    def get_active_mode(self):
+    @property
+    def active_mode(self) -> ActiveMode:
         """Get active mode of the climate."""
         return self._system.get_active_mode_zone(self.component)
 
@@ -427,7 +379,7 @@ class ZoneClimate(VaillantClimate):
         """Set new target temperature."""
         temp = kwargs.get(ATTR_TEMPERATURE)
 
-        if temp and temp != self._active_mode.target_temperature:
+        if temp and temp != self.active_mode.target_temperature:
             _LOGGER.debug("Setting target temp to %s", temp)
             self.hub.set_zone_target_temperature(self, self.component, temp)
         else:

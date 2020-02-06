@@ -1,26 +1,34 @@
 """Tests for the vaillant sensor."""
 
-import pytest
 from pymultimatic.model import (
-    System,
     OperatingModes,
+    QuickMode,
     QuickModes,
     Room,
     SettingModes,
-    QuickMode)
+    System,
+)
+import pytest
 
-import homeassistant.components.vaillant as vaillant
 from homeassistant.components.climate.const import (
     HVAC_MODE_AUTO,
-    HVAC_MODE_OFF,
-    HVAC_MODE_HEAT,
     HVAC_MODE_COOL,
+    HVAC_MODE_HEAT,
+    HVAC_MODE_OFF,
 )
-from homeassistant.components.vaillant import ATTR_VAILLANT_MODE
-from tests.components.vaillant import SystemManagerMock, goto_future, \
-    setup_vaillant, \
-    call_service, assert_entities_count, get_system, time_program, \
-    active_holiday_mode
+import homeassistant.components.vaillant as vaillant
+from homeassistant.components.vaillant.const import ATTR_VAILLANT_MODE
+
+from tests.components.vaillant import (
+    SystemManagerMock,
+    active_holiday_mode,
+    assert_entities_count,
+    call_service,
+    get_system,
+    goto_future,
+    setup_vaillant,
+    time_program,
+)
 
 
 def _assert_room_state(hass, mode, hvac, current_temp, temp):
@@ -60,11 +68,10 @@ async def test_valid_config(hass):
 
 async def test_empty_system(hass):
     """Test setup with empty system."""
-    assert await setup_vaillant(hass,
-                                system=System(None, None, None, None, None,
-                                              None,
-                                              None, None, None, None, None)
-                                )
+    assert await setup_vaillant(
+        hass,
+        system=System(None, None, None, None, None, None, None, None, None, None, None),
+    )
     assert_entities_count(hass, 0)
 
 
@@ -93,27 +100,27 @@ async def _test_mode_hvac(hass, mode, hvac_mode, target_temp):
 
     assert await setup_vaillant(hass, system=system)
     room = SystemManagerMock.system.rooms[0]
-    _assert_room_state(hass, mode, hvac_mode, room.current_temperature,
-                       target_temp)
+    _assert_room_state(hass, mode, hvac_mode, room.current_temperature, target_temp)
 
 
 async def test_auto_mode_hvac_auto(hass):
     """Test with auto mode."""
     room = get_system().rooms[0]
-    await _test_mode_hvac(hass, OperatingModes.AUTO, HVAC_MODE_AUTO,
-                          room.active_mode.target_temperature)
+    await _test_mode_hvac(
+        hass, OperatingModes.AUTO, HVAC_MODE_AUTO, room.active_mode.target_temperature
+    )
 
 
 async def test_off_mode_hvac_off(hass):
     """Test with off mode."""
-    await _test_mode_hvac(hass, OperatingModes.OFF, HVAC_MODE_OFF,
-                          Room.MIN_TARGET_TEMP)
+    await _test_mode_hvac(hass, OperatingModes.OFF, HVAC_MODE_OFF, Room.MIN_TARGET_TEMP)
 
 
 async def test_quickmode_system_off_mode_hvac_off(hass):
     """Test with quick mode off."""
-    await _test_mode_hvac(hass, QuickModes.SYSTEM_OFF, HVAC_MODE_OFF,
-                          Room.MIN_TARGET_TEMP)
+    await _test_mode_hvac(
+        hass, QuickModes.SYSTEM_OFF, HVAC_MODE_OFF, Room.MIN_TARGET_TEMP
+    )
 
 
 async def test_holiday_mode(hass):
@@ -123,8 +130,9 @@ async def test_holiday_mode(hass):
 
     assert await setup_vaillant(hass, system=system)
 
-    _assert_room_state(hass, QuickModes.HOLIDAY, HVAC_MODE_OFF,
-                       system.rooms[0].current_temperature, 15)
+    _assert_room_state(
+        hass, QuickModes.HOLIDAY, HVAC_MODE_OFF, system.rooms[0].current_temperature, 15
+    )
 
 
 async def test_set_target_temp_cool(hass):
@@ -139,8 +147,9 @@ async def test_set_target_temp_cool(hass):
         {"entity_id": "climate.vaillant_room_1", "temperature": 14},
     )
 
-    _assert_room_state(hass, OperatingModes.QUICK_VETO, HVAC_MODE_COOL,
-                       room.current_temperature, 14)
+    _assert_room_state(
+        hass, OperatingModes.QUICK_VETO, HVAC_MODE_COOL, room.current_temperature, 14
+    )
     SystemManagerMock.instance.set_room_quick_veto.assert_called_once()
 
 
@@ -156,8 +165,9 @@ async def test_set_target_temp_heat(hass):
         {"entity_id": "climate.vaillant_room_1", "temperature": 30},
     )
 
-    _assert_room_state(hass, OperatingModes.QUICK_VETO, HVAC_MODE_HEAT,
-                       room.current_temperature, 30)
+    _assert_room_state(
+        hass, OperatingModes.QUICK_VETO, HVAC_MODE_HEAT, room.current_temperature, 30
+    )
     SystemManagerMock.instance.set_room_quick_veto.assert_called_once()
 
 

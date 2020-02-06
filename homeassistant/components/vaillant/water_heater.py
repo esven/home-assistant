@@ -1,19 +1,20 @@
 """Interfaces with Vaillant water heater."""
 import logging
 
-from pymultimatic.model import System, HotWater, OperatingModes, \
-    QuickModes
+from pymultimatic.model import HotWater, OperatingModes, QuickModes, System
 
 from homeassistant.components.water_heater import (
-    WaterHeaterDevice,
-    SUPPORT_TARGET_TEMPERATURE,
+    DOMAIN,
     SUPPORT_AWAY_MODE,
     SUPPORT_OPERATION_MODE,
-    DOMAIN,
+    SUPPORT_TARGET_TEMPERATURE,
+    WaterHeaterDevice,
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
+
 from . import VaillantEntity
-from .const import (HUB, DOMAIN as VAILLANT, ATTR_VAILLANT_MODE)
+from .const import DOMAIN as VAILLANT, HUB
+from .utils import gen_state_attrs
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,8 +47,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # return True
 
 
-async def async_setup_platform(hass, config, async_add_entities,
-                               discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up water_heater platform."""
     entities = []
     hub = hass.data[VAILLANT][HUB]
@@ -66,12 +66,10 @@ class VaillantWaterHeater(VaillantEntity, WaterHeaterDevice):
 
     def __init__(self, system: System):
         """Initialize entity."""
-        super().__init__(DOMAIN, None, system.hot_water.id,
-                         system.hot_water.name)
+        super().__init__(DOMAIN, None, system.hot_water.id, system.hot_water.name)
         self._system = None
         self._active_mode = None
-        self._operations = {mode.name: mode for mode
-                            in HotWater.MODES}
+        self._operations = {mode.name: mode for mode in HotWater.MODES}
         self._refresh(system)
 
     @property
@@ -130,24 +128,20 @@ class VaillantWaterHeater(VaillantEntity, WaterHeaterDevice):
         Adding current temperature
         """
         attrs = super().state_attributes
-        attrs.update({
-            ATTR_VAILLANT_MODE: self._active_mode.current_mode.name
-        })
+        attrs.update(gen_state_attrs(self.component, self._active_mode))
         return attrs
 
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        _LOGGER.debug("target temperature is %s",
-                      self._active_mode.target_temperature)
+        _LOGGER.debug("target temperature is %s", self._active_mode.target_temperature)
         return self._active_mode.target_temperature
 
     @property
     def current_temperature(self):
         """Return the current temperature."""
         _LOGGER.debug(
-            "current temperature is %s",
-            self._system.hot_water.current_temperature
+            "current temperature is %s", self._system.hot_water.current_temperature
         )
         return self._system.hot_water.current_temperature
 
@@ -164,8 +158,7 @@ class VaillantWaterHeater(VaillantEntity, WaterHeaterDevice):
     @property
     def current_operation(self):
         """Return current operation ie. eco, electric, performance, ..."""
-        _LOGGER.debug("current_operation is %s",
-                      self._active_mode.current_mode)
+        _LOGGER.debug("current_operation is %s", self._active_mode.current_mode)
         return self._active_mode.current_mode.name
 
     @property
@@ -185,9 +178,9 @@ class VaillantWaterHeater(VaillantEntity, WaterHeaterDevice):
         target_temp = float(kwargs.get(ATTR_TEMPERATURE))
         _LOGGER.debug("Trying to set target temp to %s", target_temp)
         # HUB will call sync update
-        self.hub.set_hot_water_target_temperature(self,
-                                                  self._system.hot_water,
-                                                  target_temp)
+        self.hub.set_hot_water_target_temperature(
+            self, self._system.hot_water, target_temp
+        )
 
     def set_operation_mode(self, operation_mode):
         """Set new target operation mode."""
@@ -195,8 +188,7 @@ class VaillantWaterHeater(VaillantEntity, WaterHeaterDevice):
         # HUB will call sync update
         if operation_mode in self._operations.keys():
             mode = self._operations[operation_mode]
-            self.hub.set_hot_water_operating_mode(self, self._system.hot_water,
-                                                  mode)
+            self.hub.set_hot_water_operating_mode(self, self._system.hot_water, mode)
         else:
             _LOGGER.debug("Operation mode is unknown")
 

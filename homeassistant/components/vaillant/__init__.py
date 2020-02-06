@@ -1,40 +1,66 @@
 """Vaillant component."""
-import abc
+from abc import ABC, abstractmethod
 import logging
-from abc import ABC
 from typing import Optional
 
-import voluptuous as vol
 from pymultimatic.model import BoilerStatus
+import voluptuous as vol
 
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_PASSWORD, CONF_SCAN_INTERVAL,
-                                 CONF_USERNAME, EVENT_HOMEASSISTANT_STOP)
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.helpers import discovery
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle, slugify
-from .const import (DOMAIN, HUB, ENTITIES, PLATFORMS, DEFAULT_SCAN_INTERVAL,
-                    DEFAULT_QUICK_VETO_DURATION, DEFAULT_SMART_PHONE_ID,
-                    MIN_SCAN_INTERVAL, MIN_QUICK_VETO_DURATION,
-                    MAX_QUICK_VETO_DURATION, CONF_QUICK_VETO_DURATION,
-                    CONF_SMARTPHONE_ID)
+
+from .const import (
+    CONF_QUICK_VETO_DURATION,
+    CONF_SMARTPHONE_ID,
+    DEFAULT_QUICK_VETO_DURATION,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SMART_PHONE_ID,
+    DOMAIN,
+    ENTITIES,
+    HUB,
+    MAX_QUICK_VETO_DURATION,
+    MIN_QUICK_VETO_DURATION,
+    MIN_SCAN_INTERVAL,
+    PLATFORMS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): (
-            vol.All(cv.time_period, vol.Clamp(min=MIN_SCAN_INTERVAL))),
-        vol.Optional(CONF_SMARTPHONE_ID,
-                     default=DEFAULT_SMART_PHONE_ID): cv.string,
-        vol.Optional(CONF_QUICK_VETO_DURATION,
-                     default=DEFAULT_QUICK_VETO_DURATION):
-        (vol.All(cv.positive_int, vol.Clamp(min=MIN_QUICK_VETO_DURATION,
-                                            max=MAX_QUICK_VETO_DURATION))),
-    })
-}, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_USERNAME): cv.string,
+                vol.Required(CONF_PASSWORD): cv.string,
+                vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): (
+                    vol.All(cv.time_period, vol.Clamp(min=MIN_SCAN_INTERVAL))
+                ),
+                vol.Optional(
+                    CONF_SMARTPHONE_ID, default=DEFAULT_SMART_PHONE_ID
+                ): cv.string,
+                vol.Optional(
+                    CONF_QUICK_VETO_DURATION, default=DEFAULT_QUICK_VETO_DURATION
+                ): (
+                    vol.All(
+                        cv.positive_int,
+                        vol.Clamp(
+                            min=MIN_QUICK_VETO_DURATION, max=MAX_QUICK_VETO_DURATION
+                        ),
+                    )
+                ),
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 
 async def async_setup(hass, config):
@@ -52,21 +78,20 @@ async def async_setup(hass, config):
 
     for platform in PLATFORMS:
         hass.async_create_task(
-            discovery.async_load_platform(hass, platform, DOMAIN, {}, config))
+            discovery.async_load_platform(hass, platform, DOMAIN, {}, config)
+        )
 
     for service in SERVICES:
         schema = SERVICES[service]["schema"]
         method = SERVICES[service]["method"]
         method = getattr(service_handler, method)
-        hass.services.async_register(
-            DOMAIN, service, method, schema=schema
-        )
+        hass.services.async_register(DOMAIN, service, method, schema=schema)
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
-                               lambda event: hub.logout())
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, lambda event: hub.logout())
 
     _LOGGER.info("Successfully initialized")
     return True
+
 
 #
 # async def async_setup_entry(hass, entry):
@@ -86,15 +111,14 @@ class VaillantHub:
         from pymultimatic.model import System
         from pymultimatic.systemmanager import SystemManager
 
-        self._manager = SystemManager(config[CONF_USERNAME],
-                                      config[CONF_PASSWORD],
-                                      config[CONF_SMARTPHONE_ID])
+        self._manager = SystemManager(
+            config[CONF_USERNAME], config[CONF_PASSWORD], config[CONF_SMARTPHONE_ID]
+        )
 
         self.system: System = self._manager.get_system()
         self._quick_veto_duration = config[CONF_QUICK_VETO_DURATION]
         self.config = config
-        self.update_system = Throttle(
-            config[CONF_SCAN_INTERVAL])(self._update_system)
+        self.update_system = Throttle(config[CONF_SCAN_INTERVAL])(self._update_system)
         self._hass = hass
 
     def _update_system(self):
@@ -125,6 +149,7 @@ class VaillantHub:
     def find_component(self, comp):
         """Find a component in the system with the given id, no IO is done."""
         from pymultimatic.model import Zone, Room, HotWater, Circulation
+
         if isinstance(comp, Zone):
             for zone in self.system.zones:
                 if zone.id == comp.id:
@@ -137,14 +162,12 @@ class VaillantHub:
             if self.system.hot_water and self.system.hot_water.id == comp.id:
                 return self.system.hot_water
         if isinstance(comp, Circulation):
-            if self.system.circulation \
-                    and self.system.circulation.id == comp.id:
+            if self.system.circulation and self.system.circulation.id == comp.id:
                 return self.system.circulation
 
         return None
 
-    def set_hot_water_target_temperature(self, entity, hot_water,
-                                         target_temp):
+    def set_hot_water_target_temperature(self, entity, hot_water, target_temp):
         """Set hot water target temperature.
 
         * If there is a quick mode that impact dhw running on or holiday mode,
@@ -158,14 +181,11 @@ class VaillantHub:
 
         touch_system = self._remove_quick_mode_or_holiday(entity)
 
-        current_mode = self.system.get_active_mode_hot_water(hot_water)\
-            .current_mode
+        current_mode = self.system.get_active_mode_hot_water(hot_water).current_mode
 
         if current_mode == OperatingModes.OFF or touch_system:
-            self._manager.set_hot_water_operating_mode(hot_water.id,
-                                                       OperatingModes.ON)
-        self._manager\
-            .set_hot_water_setpoint_temperature(hot_water.id, target_temp)
+            self._manager.set_hot_water_operating_mode(hot_water.id, OperatingModes.ON)
+        self._manager.set_hot_water_setpoint_temperature(hot_water.id, target_temp)
 
         self.system.hot_water = hot_water
         self._refresh(touch_system, entity)
@@ -353,11 +373,11 @@ class VaillantHub:
             qmode = self.system.quick_mode
 
             if entity:
-                if (isinstance(entity.component, Zone) and qmode.for_zone) \
-                        or (isinstance(entity.component, Room)
-                            and qmode.for_room) \
-                        or (isinstance(entity.component, HotWater)
-                            and qmode.for_dhw):
+                if (
+                    (isinstance(entity.component, Zone) and qmode.for_zone)
+                    or (isinstance(entity.component, Room) and qmode.for_room)
+                    or (isinstance(entity.component, HotWater) and qmode.for_dhw)
+                ):
                     self._hard_remove_quick_mode()
                     removed = True
             else:
@@ -374,16 +394,16 @@ class VaillantHub:
 
         removed = False
 
-        if self.system.holiday_mode is not None \
-                and self.system.holiday_mode.is_active:
+        if self.system.holiday_mode is not None and self.system.holiday_mode.is_active:
             removed = True
             self._manager.remove_holiday_mode()
             self.system.holiday_mode = HolidayMode(False)
         return removed
 
     def _remove_quick_mode_or_holiday(self, entity):
-        return self._remove_holiday_mode_no_refresh() \
-            | self._remove_quick_mode_no_refresh(entity)
+        return self._remove_holiday_mode_no_refresh() | self._remove_quick_mode_no_refresh(
+            entity
+        )
 
     def _refresh_entities(self):
         """Fetch vaillant data and force refresh of all listening entities."""
@@ -402,17 +422,15 @@ class VaillantHub:
 class VaillantEntity(Entity, ABC):
     """Define base class for vaillant."""
 
-    def __init__(self, domain, device_class, comp_id, comp_name,
-                 class_in_id=True):
+    def __init__(self, domain, device_class, comp_id, comp_name, class_in_id=True):
         """Initialize entity."""
         self._device_class = device_class
         if device_class and class_in_id:
-            id_format = domain + '.' + DOMAIN + '_{}_' + device_class
+            id_format = domain + "." + DOMAIN + "_{}_" + device_class
         else:
-            id_format = domain + '.' + DOMAIN + '_{}'
+            id_format = domain + "." + DOMAIN + "_{}"
 
-        self.entity_id = id_format\
-            .format(slugify(comp_id)).replace(' ', '_').lower()
+        self.entity_id = id_format.format(slugify(comp_id)).replace(" ", "_").lower()
         self._vaillant_name = comp_name
         self.hub = None
 
@@ -435,7 +453,7 @@ class VaillantEntity(Entity, ABC):
         """Return the class of this device, from component DEVICE_CLASSES."""
         return self._device_class
 
-    @abc.abstractmethod
+    @abstractmethod
     async def vaillant_update(self):
         """Update specific for vaillant."""
         pass
@@ -468,8 +486,6 @@ class VaillantBoiler(Entity):
     def device_info(self):
         """Return device specific attributes."""
         return {
-            'identifiers': {
-                (DOMAIN, self.boiler_status.device_name)
-            },
-            'name': self.boiler_status.device_name,
+            "identifiers": {(DOMAIN, self.boiler_status.device_name)},
+            "name": self.boiler_status.device_name,
         }

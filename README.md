@@ -63,7 +63,7 @@ For the `binary_sensor.vaillant_holiday`, when on, you have the start date, end 
 - `vaillant.set_quick_veto` to set a quick veto for a climate entity
 - `vaillant.remove_quick_veto` to remove a quick veto for a climate entity
 
-This will allow you to create some buttons in UI to activate/deactive quick mode or holiday mode with a single click
+This will allow you to create some buttons in UI to activate/deactivate quick mode or holiday mode with a single click
 
 
 ## Expected behavior
@@ -90,4 +90,4 @@ On **zone** climate:
 - ONE_DAY_AWAY -> hvac OFF 
 
 ## Todo's
-- test from dynamic entity when there are errors coming from the API
+- move to config flow

@@ -1,25 +1,28 @@
 """Tests for the vaillant sensor."""
 import datetime
 
-import pytest
 from mock import ANY
 from pymultimatic.model import (
-    System,
-    OperatingModes,
-    QuickModes,
     HolidayMode,
     HotWater,
+    OperatingModes,
+    QuickModes,
+    System,
     constants,
 )
+import pytest
 
 import homeassistant.components.vaillant as vaillant
-from homeassistant.components.vaillant import ATTR_VAILLANT_MODE
+from homeassistant.components.vaillant.const import ATTR_VAILLANT_MODE
+
 from tests.components.vaillant import (
     SystemManagerMock,
+    assert_entities_count,
+    call_service,
+    get_system,
     goto_future,
     setup_vaillant,
-    call_service,
-    get_system, assert_entities_count)
+)
 
 
 def _assert_state(hass, mode, temp, current_temp, away_mode):
@@ -55,16 +58,14 @@ def fixture_only_water_heater(mock_system_manager):
 async def test_valid_config(hass):
     """Test setup with valid config."""
     assert await setup_vaillant(hass)
-    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP,
-                  45, "off")
+    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP, 45, "off")
 
 
 async def test_empty_system(hass):
     """Test setup with empty system."""
     assert await setup_vaillant(
         hass,
-        system=System(None, None, None, None, None, None, None, None, None,
-                      None, None)
+        system=System(None, None, None, None, None, None, None, None, None, None, None),
     )
     assert_entities_count(hass, 0)
 
@@ -72,8 +73,7 @@ async def test_empty_system(hass):
 async def test_state_update(hass):
     """Test water heater is updated accordingly to data."""
     assert await setup_vaillant(hass)
-    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP,
-                  45, "off")
+    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP, 45, "off")
 
     system = SystemManagerMock.system
     system.hot_water.current_temperature = 65
@@ -94,8 +94,7 @@ async def test_holiday_mode(hass):
     )
 
     assert await setup_vaillant(hass, system=system)
-    _assert_state(hass, QuickModes.HOLIDAY, constants.FROST_PROTECTION_TEMP, 45,
-                  "on")
+    _assert_state(hass, QuickModes.HOLIDAY, constants.FROST_PROTECTION_TEMP, 45, "on")
 
 
 async def test_away_mode(hass):
@@ -104,8 +103,7 @@ async def test_away_mode(hass):
     system.hot_water.operating_mode = OperatingModes.OFF
 
     assert await setup_vaillant(hass, system=system)
-    _assert_state(hass, OperatingModes.OFF, constants.FROST_PROTECTION_TEMP, 45,
-                  "on")
+    _assert_state(hass, OperatingModes.OFF, constants.FROST_PROTECTION_TEMP, 45, "on")
 
 
 async def test_water_boost(hass):
@@ -154,10 +152,10 @@ async def test_turn_away_mode_on(hass):
     )
     await hass.async_block_till_done()
 
-    SystemManagerMock.instance.set_hot_water_operating_mode \
-        .assert_called_once_with(ANY, OperatingModes.OFF)
-    _assert_state(hass, OperatingModes.OFF, constants.FROST_PROTECTION_TEMP, 45,
-                  "on")
+    SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once_with(
+        ANY, OperatingModes.OFF
+    )
+    _assert_state(hass, OperatingModes.OFF, constants.FROST_PROTECTION_TEMP, 45, "on")
 
 
 async def test_turn_away_mode_off(hass):
@@ -175,11 +173,11 @@ async def test_turn_away_mode_off(hass):
     )
     await hass.async_block_till_done()
 
-    SystemManagerMock.instance.set_hot_water_operating_mode\
-        .assert_called_once_with(ANY, OperatingModes.AUTO)
+    SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once_with(
+        ANY, OperatingModes.AUTO
+    )
 
-    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP,
-                  45, "off")
+    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP, 45, "off")
 
 
 async def test_set_operating_mode(hass):
@@ -193,13 +191,13 @@ async def test_set_operating_mode(hass):
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": "water_heater.vaillant_hot_water",
-         "operation_mode": "ON"},
+        {"entity_id": "water_heater.vaillant_hot_water", "operation_mode": "ON"},
     )
     await hass.async_block_till_done()
 
-    SystemManagerMock.instance.set_hot_water_operating_mode.\
-        assert_called_once_with(ANY, OperatingModes.ON)
+    SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once_with(
+        ANY, OperatingModes.ON
+    )
     _assert_state(hass, OperatingModes.ON, 40, 45, "off")
 
 
@@ -210,14 +208,12 @@ async def test_set_operating_mode_wrong(hass):
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": "water_heater.vaillant_hot_water",
-         "operation_mode": "wrong"},
+        {"entity_id": "water_heater.vaillant_hot_water", "operation_mode": "wrong"},
     )
     await hass.async_block_till_done()
 
     SystemManagerMock.instance.set_hot_water_operating_mode.assert_not_called()
-    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP,
-                  45, "off")
+    _assert_state(hass, OperatingModes.AUTO, constants.FROST_PROTECTION_TEMP, 45, "off")
 
 
 async def test_set_temperature(hass):
@@ -237,8 +233,9 @@ async def test_set_temperature(hass):
         {"entity_id": "water_heater.vaillant_hot_water", "temperature": 50},
     )
 
-    SystemManagerMock.instance.set_hot_water_setpoint_temperature\
-        .assert_called_once_with("hot_water", 50)
+    SystemManagerMock.instance.set_hot_water_setpoint_temperature.assert_called_once_with(
+        "hot_water", 50
+    )
     SystemManagerMock.instance.set_hot_water_operating_mode.assert_not_called()
 
 
@@ -259,8 +256,9 @@ async def test_set_temperature_already_on(hass):
         {"entity_id": "water_heater.vaillant_hot_water", "temperature": 50},
     )
 
-    SystemManagerMock.instance.set_hot_water_setpoint_temperature\
-        .assert_called_once_with("hot_water", 50)
+    SystemManagerMock.instance.set_hot_water_setpoint_temperature.assert_called_once_with(
+        "hot_water", 50
+    )
     SystemManagerMock.instance.set_hot_water_operating_mode.assert_not_called()
 
 
@@ -281,8 +279,9 @@ async def test_set_temperature_already_off(hass):
         {"entity_id": "water_heater.vaillant_hot_water", "temperature": 50},
     )
 
-    SystemManagerMock.instance.set_hot_water_setpoint_temperature\
-        .assert_called_once_with("hot_water", 50)
+    SystemManagerMock.instance.set_hot_water_setpoint_temperature.assert_called_once_with(
+        "hot_water", 50
+    )
     SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once()
 
 
@@ -296,11 +295,11 @@ async def test_set_operating_mode_while_quick_mode(hass):
         hass,
         "water_heater",
         "set_operation_mode",
-        {"entity_id": "water_heater.vaillant_hot_water",
-         "operation_mode": "AUTO"},
+        {"entity_id": "water_heater.vaillant_hot_water", "operation_mode": "AUTO"},
     )
-    SystemManagerMock.instance.set_hot_water_operating_mode\
-        .assert_called_once_with("hot_water", OperatingModes.AUTO)
+    SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once_with(
+        "hot_water", OperatingModes.AUTO
+    )
     SystemManagerMock.instance.remove_quick_mode.assert_not_called()
 
 
@@ -314,9 +313,9 @@ async def test_set_operating_mode_while_quick_mode_for_dhw(hass):
         hass,
         "water_heater",
         "set_operation_mode",
-        {"entity_id": "water_heater.vaillant_hot_water",
-         "operation_mode": "AUTO"},
+        {"entity_id": "water_heater.vaillant_hot_water", "operation_mode": "AUTO"},
     )
-    SystemManagerMock.instance.set_hot_water_operating_mode\
-        .assert_called_once_with("hot_water", OperatingModes.AUTO)
+    SystemManagerMock.instance.set_hot_water_operating_mode.assert_called_once_with(
+        "hot_water", OperatingModes.AUTO
+    )
     SystemManagerMock.instance.remove_quick_mode.assert_called_once_with()
