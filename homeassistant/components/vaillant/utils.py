@@ -1,5 +1,5 @@
 """Utilities for HA."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from pymultimatic.model import OperatingModes
 
@@ -44,22 +44,21 @@ def _get_quick_veto_end(component):
     # there is no remaining duration for zone
     if component.quick_veto.remaining_duration:
         millis = component.quick_veto.remaining_duration * 60 * 1000
-        end_time = dt.as_local(datetime.now()) + timedelta(milliseconds=millis)
+        end_time = dt.now() + timedelta(milliseconds=millis)
         end_time = end_time.replace(second=0, microsecond=0)
     return end_time
 
 
 def _get_next_setting(component):
-    now = datetime.now()
+    now = dt.now()
     setting = component.time_program.get_next(now)
 
-    start = datetime.now().replace(
-        hour=setting.hour, minute=setting.minute, second=0, microsecond=0
-    )
     abs_min = now.hour * 60 + now.minute
 
     if setting.absolute_minutes < abs_min:
-        start + timedelta(days=1)
+        now += timedelta(days=1)
 
-    setting.start = dt.as_local(start)
+    setting.start = now.replace(
+        hour=setting.hour, minute=setting.minute, second=0, microsecond=0
+    )
     return setting
