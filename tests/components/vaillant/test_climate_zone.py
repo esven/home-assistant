@@ -4,6 +4,7 @@ from pymultimatic.model import (
     OperatingModes,
     QuickMode,
     QuickModes,
+    QuickVeto,
     SettingModes,
     System,
     Zone,
@@ -19,7 +20,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
 )
 import homeassistant.components.vaillant as vaillant
-from homeassistant.components.vaillant.const import ATTR_VAILLANT_MODE
+from homeassistant.components.vaillant.const import ATTR_ENDS_AT, ATTR_VAILLANT_MODE
 
 from tests.components.vaillant import (
     SystemManagerMock,
@@ -296,3 +297,19 @@ async def test_state_update_room(hass):
     await goto_future(hass)
 
     _assert_zone_state(hass, OperatingModes.AUTO, HVAC_MODE_AUTO, 25, 30)
+
+
+async def test_state_attrs(hass):
+    """Tetst state_attrs are correct."""
+    assert await setup_vaillant(hass)
+    state = hass.states.get("climate.vaillant_zone_1")
+    assert state.attributes[ATTR_ENDS_AT] is not None
+
+
+async def test_state_attrs_quick_veto(hass):
+    """Tetst state_attrs are correct."""
+    system = get_system()
+    system.zones[0].quick_veto = QuickVeto(None, 15)
+    assert await setup_vaillant(hass, system=system)
+    state = hass.states.get("climate.vaillant_zone_1")
+    assert state.attributes.get(ATTR_ENDS_AT, None) is None

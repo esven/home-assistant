@@ -13,7 +13,7 @@ from pymultimatic.model import (
 import pytest
 
 import homeassistant.components.vaillant as vaillant
-from homeassistant.components.vaillant.const import ATTR_VAILLANT_MODE
+from homeassistant.components.vaillant.const import ATTR_ENDS_AT, ATTR_VAILLANT_MODE
 
 from tests.components.vaillant import (
     SystemManagerMock,
@@ -319,3 +319,10 @@ async def test_set_operating_mode_while_quick_mode_for_dhw(hass):
         "hot_water", OperatingModes.AUTO
     )
     SystemManagerMock.instance.remove_quick_mode.assert_called_once_with()
+
+
+async def test_state_attrs(hass):
+    """Tetst state_attrs are correct."""
+    assert await setup_vaillant(hass)
+    state = hass.states.get("water_heater.vaillant_hot_water")
+    assert state.attributes[ATTR_ENDS_AT] is not None

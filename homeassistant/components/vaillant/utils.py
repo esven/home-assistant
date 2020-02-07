@@ -6,11 +6,10 @@ from pymultimatic.model import OperatingModes
 from homeassistant.util import dt
 
 from .const import (
-    ATTR_QUICK_VETO_END,
+    ATTR_ENDS_AT,
     ATTR_VAILLANT_MODE,
     ATTR_VAILLANT_NEXT_SETTING,
     ATTR_VAILLANT_SETTING,
-    ATTR_VAILLANT_SETTING_END,
 )
 
 
@@ -23,14 +22,14 @@ def gen_state_attrs(component, active_mode):
         if component.quick_veto.remaining_duration:
             qveto_end = _get_quick_veto_end(component)
             if qveto_end:
-                attrs.update({ATTR_QUICK_VETO_END: qveto_end.isoformat()})
+                attrs.update({ATTR_ENDS_AT: qveto_end.isoformat()})
     elif active_mode.current_mode == OperatingModes.AUTO:
         setting = _get_next_setting(component)
         value = setting.setting.name if setting.setting else setting.target_temperature
         attrs.update(
             {
                 ATTR_VAILLANT_NEXT_SETTING: value,
-                ATTR_VAILLANT_SETTING_END: setting.start.isoformat(),
+                ATTR_ENDS_AT: setting.start.isoformat(),
             }
         )
 
