@@ -27,8 +27,8 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 
-from .const import DOMAIN as VAILLANT
-from .entities import VaillantEntity
+from . import VaillantEntity
+from .const import DOMAIN as VAILLANT, HUB
 from .utils import gen_state_attrs
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,8 +36,32 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Vaillant climate platform."""
+    pass
+    # climates = []
+    # hub = hass.data[DOMAIN][HUB]
+    #
+    # if hub.system:
+    #     if hub.system.zones:
+    #         for zone in hub.system.zones:
+    #             if not zone.rbr:
+    #                 entity = ZoneClimate(hub.system, zone)
+    #                 climates.append(entity)
+    #
+    #     if hub.system.rooms:
+    #         for room in hub.system.rooms:
+    #             entity = RoomClimate(hub.system, room)
+    #             climates.append(entity)
+    #
+    # _LOGGER.info("Adding %s climate entities", len(climates))
+    #
+    # async_add_entities(climates, True)
+    # return True
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the Vaillant climate platform."""
     climates = []
-    hub = hass.data[VAILLANT].api
+    hub = hass.data[VAILLANT][HUB]
 
     if hub.system:
         if hub.system.zones:

@@ -1,7 +1,6 @@
-"""The tests for vaillant integration."""
+"""The tests for vaillant platforms."""
 import datetime
 
-from asynctest import patch
 import mock
 from pymultimatic.model import (
     BoilerInfo,
@@ -22,14 +21,14 @@ from pymultimatic.model import (
 )
 from pymultimatic.systemmanager import SystemManager
 
-from homeassistant import config_entries
-from homeassistant.components.vaillant import DOMAIN
+from homeassistant.components.vaillant import DOMAIN, ENTITIES
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.setup import async_setup_component
 from homeassistant.util import utcnow
 
 from tests.common import async_fire_time_changed
 
-VALID_MINIMAL_CONFIG = {CONF_USERNAME: "test", CONF_PASSWORD: "test"}
+VALID_MINIMAL_CONFIG = {DOMAIN: {CONF_USERNAME: "test", CONF_PASSWORD: "test"}}
 
 
 class SystemManagerMock(SystemManager):
@@ -179,15 +178,9 @@ async def setup_vaillant(hass, config=None, system=None):
     if not system:
         system = get_system()
     SystemManagerMock.system = system
-
-    with patch(
-        "homeassistant.components.vaillant.hub.ApiHub.authenticate", return_value=True
-    ):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}, data=config
-        )
+    is_setup = await async_setup_component(hass, DOMAIN, config)
     await hass.async_block_till_done()
-    return result
+    return is_setup
 
 
 async def call_service(hass, domain, service, data):
@@ -199,5 +192,5 @@ async def call_service(hass, domain, service, data):
 def assert_entities_count(hass, count):
     """Count entities owned by the component."""
     assert (
-        len(hass.states.async_entity_ids()) == len(hass.data[DOMAIN].entities) == count
+        len(hass.states.async_entity_ids()) == len(hass.data[DOMAIN][ENTITIES]) == count
     )

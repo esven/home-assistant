@@ -12,8 +12,8 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 
-from .const import DOMAIN as VAILLANT
-from .entities import VaillantEntity
+from . import VaillantEntity
+from .const import DOMAIN as VAILLANT, HUB
 from .utils import gen_state_attrs
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,8 +34,23 @@ AWAY_MODES = [
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up water_heater platform."""
+    pass
+    # entities = []
+    # hub = hass.data[DOMAIN][HUB]
+    #
+    # if hub.system:
+    #     entity = VaillantWaterHeater(hub.system)
+    #     entities.append(entity)
+    #
+    # _LOGGER.info("Added water heater? %s", len(entities) > 0)
+    # async_add_entities(entities, True)
+    # return True
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up water_heater platform."""
     entities = []
-    hub = hass.data[VAILLANT].api
+    hub = hass.data[VAILLANT][HUB]
 
     if hub.system:
         entity = VaillantWaterHeater(hub.system)

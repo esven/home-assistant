@@ -24,18 +24,58 @@ from homeassistant.components.binary_sensor import (
     DOMAIN,
     BinarySensorDevice,
 )
+from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.util import Throttle
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN as VAILLANT
-from .entities import VaillantBoilerDevice, VaillantEntity
+from . import DOMAIN as VAILLANT, HUB, VaillantBoiler, VaillantEntity
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Vaillant binary sensor platform."""
+    pass
+    # sensors = []
+    # hub = hass.data[DOMAIN][HUB]
+    # if hub.system:
+    #     if hub.system.circulation:
+    #         sensors.append(CirculationSensor(hub.system.circulation))
+    #
+    #     if hub.system.boiler_status:
+    #         sensors.append(BoilerError(hub.system.boiler_status))
+    #
+    #     if hub.system.system_status:
+    #         sensors.append(BoxOnline(hub.system.system_status))
+    #         sensors.append(BoxUpdate(hub.system.system_status))
+    #
+    #     for room in hub.system.rooms:
+    #         sensors.append(RoomWindow(room))
+    #         sensors.append(RoomChildLock(room))
+    #         for device in room.devices:
+    #             sensors.append(RoomDeviceBattery(device, room))
+    #             sensors.append(RoomDeviceConnectivity(device, room))
+    #
+    #     entity = HolidayModeSensor(hub.system.holiday_mode)
+    #     sensors.append(entity)
+    #
+    #     entity = QuickModeSensor(hub.system.quick_mode)
+    #     sensors.append(entity)
+    #
+    #     handler = \
+    #         VaillantSystemErrorHandler(hub, hass, async_add_entities,
+    #                                    hub.config[CONF_SCAN_INTERVAL])
+    #     await handler.update()
+    #
+    # _LOGGER.info("Adding %s binary sensor entities", len(sensors))
+    #
+    # async_add_entities(sensors)
+    # return True
+
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up the Vaillant binary sensor platform."""
     sensors = []
-    hub = hass.data[VAILLANT].api
+    hub = hass.data[VAILLANT][HUB]
     if hub.system:
         if hub.system.circulation:
             sensors.append(CirculationSensor(hub.system.circulation))
@@ -61,7 +101,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         sensors.append(entity)
 
         handler = VaillantSystemErrorHandler(
-            hub, hass, async_add_entities, DEFAULT_SCAN_INTERVAL
+            hub, hass, async_add_entities, hub.config[CONF_SCAN_INTERVAL]
         )
         await handler.update()
 
@@ -180,7 +220,7 @@ class RoomDevice(VaillantEntity, BinarySensorDevice, ABC):
 
     def __init__(self, device: Device, room: Room, device_class):
         """Initialize entity."""
-        VaillantEntity.__init__(self, DOMAIN, device_class, device.sgtin, device.name)
+        super().__init__(DOMAIN, device_class, device.sgtin, device.name)
         self._room = room
         self._device = device
         self._device_class = device_class
@@ -191,8 +231,7 @@ class RoomDevice(VaillantEntity, BinarySensorDevice, ABC):
         return {
             "identifiers": {(VAILLANT, self._device.sgtin)},
             "name": self._device.name,
-            "model": self._device.device_type,
-            "manufacturer": "Vaillant",
+            "device_type": self._device.device_type,
         }
 
     # pylint: disable=no-self-use
@@ -312,7 +351,7 @@ class BoxOnline(BaseVaillantSystem):
         return self._system_status.is_online
 
 
-class BoilerError(VaillantEntity, BinarySensorDevice, VaillantBoilerDevice):
+class BoilerError(VaillantEntity, BinarySensorDevice, VaillantBoiler):
     """Check if there is some error."""
 
     def __init__(self, boiler_status: BoilerStatus):
@@ -325,7 +364,7 @@ class BoilerError(VaillantEntity, BinarySensorDevice, VaillantBoilerDevice):
             boiler_status.device_name,
             False,
         )
-        VaillantBoilerDevice.__init__(self, boiler_status)
+        VaillantBoiler.__init__(self, boiler_status)
         self._state_attrs = {}
 
     @property

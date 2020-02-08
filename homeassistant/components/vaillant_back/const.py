@@ -7,12 +7,11 @@ HUB = "hub"
 ENTITIES = "entities"
 
 # list of platforms into entity are created
-# PLATFORMS = ["binary_sensor", "sensor", "climate", "water_heater"]
-PLATFORMS = ["binary_sensor", "sensor", "water_heater", "climate"]
+PLATFORMS = ["binary_sensor", "sensor", "climate", "water_heater"]
 
 # default values for configuration
 DEFAULT_EMPTY = ""
-DEFAULT_SCAN_INTERVAL = timedelta(minutes=2)
+DEFAULT_SCAN_INTERVAL = timedelta(minutes=5)
 DEFAULT_QUICK_VETO_DURATION = 3 * 60
 DEFAULT_SMART_PHONE_ID = "homeassistant"
 
@@ -35,5 +34,3 @@ ATTR_START_DATE = "start_date"
 ATTR_END_DATE = "end_date"
 ATTR_TEMPERATURE = "temperature"
 ATTR_DURATION = "duration"
-
-PRESSURE_BAR = "bar"

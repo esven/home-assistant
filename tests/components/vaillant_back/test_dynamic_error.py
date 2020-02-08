@@ -5,7 +5,7 @@ from pymultimatic.model import Error
 import pytest
 
 from homeassistant.components import vaillant
-from homeassistant.components.vaillant import DOMAIN
+from homeassistant.components.vaillant import DOMAIN, HUB
 
 from tests.components.vaillant import get_system, goto_future, setup_vaillant
 
@@ -27,7 +27,7 @@ async def test_error(hass):
     ]
     assert await setup_vaillant(hass, system=system)
     assert (
-        hass.data[DOMAIN].api.get_entity("binary_sensor.vaillant_error_f152")
+        hass.data[DOMAIN][HUB].get_entity("binary_sensor.vaillant_error_f152")
         is not None
     )
 
@@ -40,7 +40,7 @@ async def test_error_removed(hass):
     ]
     assert await setup_vaillant(hass, system=system)
     assert (
-        hass.data[DOMAIN].api.get_entity("binary_sensor.vaillant_error_f152")
+        hass.data[DOMAIN][HUB].get_entity("binary_sensor.vaillant_error_f152")
         is not None
     )
     assert "binary_sensor.vaillant_error_f152" in hass.states.async_entity_ids()
@@ -48,5 +48,7 @@ async def test_error_removed(hass):
     system.errors = []
     await goto_future(hass)
 
-    assert hass.data[DOMAIN].api.get_entity("binary_sensor.vaillant_error_f152") is None
+    assert (
+        hass.data[DOMAIN][HUB].get_entity("binary_sensor.vaillant_error_f152") is None
+    )
     assert "binary_sensor.vaillant_error_f152" not in hass.states.async_entity_ids()
