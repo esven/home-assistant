@@ -1,6 +1,7 @@
 """Api hub and integration data."""
 import logging
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import Throttle
 
 from .const import (
@@ -330,7 +331,8 @@ class ApiHub:
 class DomainData:
     """Data for the integration."""
 
-    def __init__(self, api: ApiHub) -> None:
+    def __init__(self, api: ApiHub, entry: ConfigEntry) -> None:
         """Init."""
         self.api = api
+        self.entry = entry
         self.entities = []

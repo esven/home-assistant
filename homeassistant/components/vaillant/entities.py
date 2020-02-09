@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 import logging
 from typing import Optional
 
-from pymultimatic.model import BoilerStatus
+from pymultimatic.model import BoilerStatus, Device, SystemInfo, SystemStatus
 
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import slugify
 
@@ -27,11 +28,17 @@ class VaillantEntity(Entity, ABC):
         self.entity_id = id_format.format(slugify(comp_id)).lower()
         self._vaillant_name = comp_name
         self.hub = None
+        self._unique_id = self.entity_id
 
     @property
     def name(self) -> Optional[str]:
         """Return the name of the entity."""
         return self._vaillant_name
+
+    @property
+    def unique_id(self) -> Optional[str]:
+        """Return a unique ID."""
+        return self._unique_id
 
     async def async_update(self):
         """Update the entity."""
@@ -75,15 +82,81 @@ class VaillantBoilerDevice(Entity):
     def __init__(self, boiler_status: BoilerStatus) -> None:
         """Initialize device."""
         self.boiler_status = boiler_status
+        if self.boiler_status is not None:
+            self.boiler_id = slugify(self.boiler_status.device_name)
 
     @property
     def device_info(self):
         """Return device specific attributes."""
         if self.boiler_status is not None:
             return {
-                "identifiers": {(DOMAIN, slugify(self.boiler_status.device_name))},
+                "identifiers": {(DOMAIN, self.boiler_id)},
                 "name": self.boiler_status.device_name,
                 "manufacturer": "Vaillant",
                 "model": self.boiler_status.device_name,
             }
         return None
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        if self.boiler_status is not None:
+            return {"device_id": self.boiler_id, "error": self.boiler_status.is_error}
+        return None
+
+
+class VaillantRoomDevice(Entity):
+    """Base class for ambisense device."""
+
+    def __init__(self, device: Device) -> None:
+        """Initialize device."""
+        self.device = device
+
+    @property
+    def device_info(self):
+        """Return device specific attributes."""
+        return {
+            "identifiers": {(DOMAIN, self.device.sgtin)},
+            "name": self.device.name,
+            "manufacturer": "Vaillant",
+            "model": self.device.device_type,
+        }
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        return {
+            "device_id": self.device.sgtin,
+            "battery_low": self.device.battery_low,
+            "connected": not self.device.radio_out_of_reach,
+        }
+
+
+class VaillantBoxDevice(Entity):
+    """Vaillant gateway device (ex: VR920)."""
+
+    def __init__(self, info: SystemInfo, status: SystemStatus):
+        """Init."""
+        self.system_info = info
+        self.system_status = status
+
+    @property
+    def device_info(self):
+        """Return device specific attributes."""
+        return {
+            "identifiers": {(DOMAIN, self.system_info.serial_number)},
+            "connections": {(CONNECTION_NETWORK_MAC, self.system_info.mac_ethernet)},
+            "name": self.system_info.gateway,
+            "manufacturer": "Vaillant",
+            "model": self.system_info.gateway,
+            "sw_version": self.system_info.firmware,
+        }
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        return {
+            "serial_number": self.system_info.serial_number,
+            "connected": self.system_status.is_online,
+            "up_to_date": self.system_status.is_up_to_date,
+        }

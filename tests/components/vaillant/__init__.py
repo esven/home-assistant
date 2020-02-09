@@ -14,6 +14,7 @@ from pymultimatic.model import (
     Room,
     SettingModes,
     System,
+    SystemInfo,
     SystemStatus,
     TimePeriodSetting,
     TimeProgram,
@@ -125,6 +126,15 @@ def get_system():
     outdoor_temp = 18
     quick_mode = None
 
+    info = SystemInfo(
+        "VR920",
+        "666777888",
+        "System name",
+        "01:01:AA:CC:CC:CC",
+        "01:01:AA:DD:DD:DD",
+        "1.6.8",
+    )
+
     return System(
         holiday_mode,
         system_status,
@@ -137,6 +147,7 @@ def get_system():
         quick_mode,
         [],
         boiler_info,
+        info,
     )
 
 

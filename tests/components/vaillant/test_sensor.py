@@ -1,18 +1,23 @@
 """Tests for the vaillant sensor."""
 
-import pytest
 from pymultimatic.model import System
+import pytest
 
 import homeassistant.components.vaillant as vaillant
-from tests.components.vaillant import SystemManagerMock, goto_future, \
-    setup_vaillant, assert_entities_count
+
+from tests.components.vaillant import (
+    SystemManagerMock,
+    assert_entities_count,
+    goto_future,
+    setup_vaillant,
+)
 
 
 @pytest.fixture(autouse=True)
 def fixture_only_sensor(mock_system_manager):
     """Mock vaillant to only handle sensor."""
     orig_platforms = vaillant.PLATFORMS
-    vaillant.PLATFORMS = ['sensor']
+    vaillant.PLATFORMS = ["sensor"]
     yield
     vaillant.PLATFORMS = orig_platforms
 
@@ -25,9 +30,12 @@ async def test_valid_config(hass):
 
 async def test_empty_system(hass):
     """Test setup with empty system."""
-    assert await setup_vaillant(hass, system=System(None, None, None, None,
-                                                    None, None, None, None,
-                                                    None, None, None))
+    assert await setup_vaillant(
+        hass,
+        system=System(
+            None, None, None, None, None, None, None, None, None, None, None, None
+        ),
+    )
     assert_entities_count(hass, 0)
 
 
@@ -36,9 +44,9 @@ async def test_state_update(hass):
     assert await setup_vaillant(hass)
     assert_entities_count(hass, 3)
 
-    assert hass.states.is_state('sensor.vaillant_boiler_pressure', '1.4')
-    assert hass.states.is_state('sensor.vaillant_boiler_temperature', '20')
-    assert hass.states.is_state('sensor.vaillant_outdoor_temperature', '18')
+    assert hass.states.is_state("sensor.vaillant_boiler_pressure", "1.4")
+    assert hass.states.is_state("sensor.vaillant_boiler_temperature", "20")
+    assert hass.states.is_state("sensor.vaillant_outdoor_temperature", "18")
 
     system = SystemManagerMock.system
     system.outdoor_temperature = 21
@@ -48,6 +56,6 @@ async def test_state_update(hass):
 
     await goto_future(hass)
 
-    assert hass.states.is_state('sensor.vaillant_boiler_pressure', '1.6')
-    assert hass.states.is_state('sensor.vaillant_boiler_temperature', '32')
-    assert hass.states.is_state('sensor.vaillant_outdoor_temperature', '21')
+    assert hass.states.is_state("sensor.vaillant_boiler_pressure", "1.6")
+    assert hass.states.is_state("sensor.vaillant_boiler_temperature", "32")
+    assert hass.states.is_state("sensor.vaillant_outdoor_temperature", "21")

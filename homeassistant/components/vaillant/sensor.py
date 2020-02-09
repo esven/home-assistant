@@ -1,5 +1,4 @@
 """Interfaces with Vaillant sensors."""
-from abc import ABC
 import logging
 
 from pymultimatic.model import BoilerInfo, BoilerStatus
@@ -44,16 +43,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     return True
 
 
-class BaseVaillantTemperatureSensor(VaillantEntity, ABC):
-    """Base temperature sensor class."""
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return TEMP_CELSIUS
-
-
-class OutdoorTemperatureSensor(BaseVaillantTemperatureSensor):
+class OutdoorTemperatureSensor(VaillantEntity):
     """Outdoor temperature sensor."""
 
     def __init__(self, outdoor_temp):
@@ -70,6 +60,11 @@ class OutdoorTemperatureSensor(BaseVaillantTemperatureSensor):
     def available(self):
         """Return True if entity is available."""
         return self._outdoor_temp is not None
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement of this entity, if any."""
+        return TEMP_CELSIUS
 
     async def vaillant_update(self):
         """Update specific for vaillant."""
@@ -111,16 +106,21 @@ class BoilerWaterPressureSensor(VaillantEntity, VaillantBoilerDevice):
         self.boiler_status = self.hub.system.boiler_status
 
 
-class BoilerTemperatureSensor(BaseVaillantTemperatureSensor, VaillantBoilerDevice):
+class BoilerTemperatureSensor(VaillantEntity, VaillantBoilerDevice):
     """Water temperature inside the boiler."""
 
     def __init__(self, boiler_info: BoilerInfo, boiler_status: BoilerStatus):
         """Initialize entity."""
-        BaseVaillantTemperatureSensor.__init__(
+        VaillantEntity.__init__(
             self, DOMAIN, DEVICE_CLASS_TEMPERATURE, "boiler", "boiler"
         )
         VaillantBoilerDevice.__init__(self, boiler_status)
         self.boiler_info = boiler_info
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement of this entity, if any."""
+        return TEMP_CELSIUS
 
     @property
     def state(self):

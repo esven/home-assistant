@@ -65,7 +65,9 @@ async def test_empty_system(hass):
     """Test setup with empty system."""
     assert await setup_vaillant(
         hass,
-        system=System(None, None, None, None, None, None, None, None, None, None, None),
+        system=System(
+            None, None, None, None, None, None, None, None, None, None, None, None
+        ),
     )
     assert_entities_count(hass, 0)
 
