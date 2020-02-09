@@ -6,21 +6,11 @@ For the sake of (my) simplicity, this is a complete fork of the HA repository si
 
 Please download the vaillant folder [here](https://minhaskamal.github.io/DownGit/#/home?url=https://github.com/thomasgermain/home-assistant/tree/vaillant/homeassistant/components/vaillant)
 
-There is still some work to do. I'm still thinking on what HA should do when changing temperature, hvac mode, etc. What to do in case of quick mode, quick_veto, etc. I try to reflect to behavior of the android application (except when it sounds stupid) as most as possible.
 Ideas are welcome ! Don't hesitate to create issue to suggest something, it will be really appreciated.
 
-and add this to your `configuration.yaml`
+You can configure it through the UI using integration.
+You have to provided your username and password (same as multimatic app)
 
-```yaml
-vaillant:
-  username: username
-  password: password
-```
-
-You can also configure:
-- `smartphoneid`, by default this `homeassistant`. The `smartphoneid` is used during the authentication process
-- `quick_veto_duration` in some case, HA will create for you a quick veto, you can specify here the default duration in hours, default is 3 hours (like when you set a temperature on a room valve). It can be set from 0.5 to 24. **Please note de quick veto duration for a zone is configurable, it's 6 hours**
-- `scan_interval`, by default this is 5 minutes
 
 ## Provided entities
 - 1 water_heater entity, if any water heater: `water_heater.vaillant_<water heater id>`, basically `water_heater.vaillant_control_dhw`
@@ -28,9 +18,9 @@ You can also configure:
 - 1 climate entity per room `climate.vaillant_<room name>`
 - 1 binary_sensor entity `binary_sensor.vaillant_circulation` reflecting if the circulation is on or off
 - 1 binary_sensor entity `climate.vaillant_<room name>_window` per room reflecting the state of the "open window" in a room (this is a feature of the vaillant API, if the temperature is going down pretty fast, the API assumes there is an open window and heating stops)
-- 1 binary_sensor entity `climate.vaillant_<room name>_lock`per room reflecting if valves are "child locked" or not
-- 1 binary_sensor entity `binary_sensor.vaillant_<sgtin>>_battery` reflecting battery level for each device (VR50, VR51) in the system
-- 1 binary_sensor entity `binary_sensor.vaillant_<sgtin>>_battery` reflecting connectivity for each device (VR50, VR51) in the system
+- 1 binary_sensor entity `climate.vaillant_<sgtin>_lock`per device reflecting if valves are "child locked" or not
+- 1 binary_sensor entity `binary_sensor.vaillant_<sgtin>_battery` reflecting battery level for each device (VR50, VR51) in the system
+- 1 binary_sensor entity `binary_sensor.vaillant_<sgtin>_battery` reflecting connectivity for each device (VR50, VR51) in the system
 - 1 binary_sensor entity `binary_sensor.vaillant_system_update`to know if there is an update pending
 - 1 binary_sensor entity `binary_sensor.vaillant_system_online` to know if the vr900/920 is connected to the internet
 - 1 binary_sensor entity `binary_sensor.vaillant_<boiler model>` to know if there is an error at the boiler. **Some boiler does not provide this information, so entity won't be available.**
@@ -39,7 +29,12 @@ You can also configure:
 - 1 temperature sensor ` sensor.vaillant_boiler_temperature` for water temperature in boiler
 - 1 binary sensor `binary_sensor.vaillant_quick_mode` to know a quick mode is running on
 - 1 binary sensor ` binary_sensor.vaillant_holiday` to know the holiday mode is on/off
-- dynamic binary sensors if there are extra errors coming from the api (**not yet tested**) 
+- dynamic binary sensors if there are extra errors coming from the api.
+
+## Provided devices
+- 1 device per VR50 or VR51
+- 1 device for the boiler (if supported). Some boiler don't provide enough information to be able to create a device in HA.
+- 1 device for the gateway (like VR920)
 
 
 For the climate and water heater entities, you can also found 
